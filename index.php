@@ -253,7 +253,7 @@ function remoteContentsPath(string $path): string
     return rtrim($path, '/') . '/.';
 }
 
-function latestBackups(): array
+function latestBackups(?string $type = null): array
 {
     if (!is_dir(BACKUP_ROOT)) {
         return [];
@@ -261,6 +261,10 @@ function latestBackups(): array
 
     $backups = [];
     foreach (glob(BACKUP_ROOT . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR) ?: [] as $path) {
+        $isIos = isIosMediaBackup(basename($path));
+        if (($type === 'ios' && !$isIos) || ($type === 'android' && $isIos)) {
+            continue;
+        }
         $metadataPath = $path . DIRECTORY_SEPARATOR . 'backup.json';
         $metadata = is_file($metadataPath) ? json_decode((string) file_get_contents($metadataPath), true) : null;
         $size = is_array($metadata) && isset($metadata['size']) ? humanSize((int) $metadata['size']) : 'Tamanho pendente';
@@ -473,8 +477,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
 
 $hasAdb = runAdb(['version'])['exitCode'] === 0;
 $hasIosTool = runIos(['--help'])['exitCode'] === 0;
-$backups = latestBackups();
-$androidBackups = array_values(array_filter($backups, static fn (array $backup): bool => !isIosMediaBackup($backup['name'])));
+$androidBackups = latestBackups('android');
+$iosBackups = latestBackups('ios');
 ?>
 <!doctype html>
 <html lang="pt-PT">
@@ -548,10 +552,13 @@ $androidBackups = array_values(array_filter($backups, static fn (array $backup):
             <div class="action-row"><button class="primary-button" type="submit"><span>Iniciar backup</span><b>→</b></button><span class="action-note">Os dados ficam apenas nesta pasta<br><strong><?= htmlspecialchars(basename(BACKUP_ROOT), ENT_QUOTES, 'UTF-8') ?>/</strong></span></div>
         </form>
 
-        <section class="history"><div class="section-heading"><div><span class="section-number">02</span><h2>Backups recentes</h2></div><span class="count-label"><?= count($backups) ?> guardados</span></div>
-                <?php if ($backups === []): ?><div class="empty-state">Ainda não existem backups nesta máquina.</div><?php else: ?><div class="backup-list"><?php foreach ($backups as $backup): ?><div class="backup-item"><span class="archive-icon">⌁</span><span><strong><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?></strong><small><?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></small></span><span class="archive-status">Disponível</span></div><?php endforeach; ?></div><?php endif; ?>
+        <section class="history"><div class="section-heading"><div><span class="section-number">02A</span><h2>Backups Android</h2></div><span class="count-label"><?= count($androidBackups) ?> guardados</span></div>
+            <?php if ($androidBackups === []): ?><div class="empty-state">Ainda não existem backups Android nesta máquina.</div><?php else: ?><div class="backup-list"><?php foreach ($androidBackups as $backup): ?><div class="backup-item"><span class="archive-icon">⌁</span><span><strong><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?></strong><small><?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></small></span><span class="archive-status">Android</span></div><?php endforeach; ?></div><?php endif; ?>
         </section>
-            <?php if ($backups !== []): ?>
+        <section class="history ios-history"><div class="section-heading"><div><span class="section-number">02B</span><h2>Backups iPhone</h2></div><span class="count-label"><?= count($iosBackups) ?> guardados</span></div>
+            <?php if ($iosBackups === []): ?><div class="empty-state">Ainda não existem backups iPhone nesta máquina.</div><?php else: ?><div class="backup-list"><?php foreach ($iosBackups as $backup): ?><div class="backup-item"><span class="archive-icon">⌁</span><span><strong><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?></strong><small><?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></small></span><span class="archive-status">Fotos e vídeos</span></div><?php endforeach; ?></div><?php endif; ?>
+        </section>
+            <?php if ($androidBackups !== []): ?>
                 <form method="post" class="restore-form process-form" data-process="restore">
                     <input type="hidden" name="action" value="restore">
                     <div class="section-heading"><div><span class="section-number">03</span><h2>Restaurar para o telemóvel</h2></div></div>

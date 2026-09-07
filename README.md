@@ -60,3 +60,5 @@ O projeto auxiliar `sms-helper` contém uma APK Android para exportar SMS para `
 ## iPhone
 
 Na secção **Backup de iPhone**, escreva um nome e crie uma cópia apenas de fotos e vídeos. O backup Apple completo é usado temporariamente para obter a Camera Roll, mas é apagado no fim; o resultado guardado fica em `iPhone\FotosVideos`. Esta aplicação não executa qualquer restauro iPhone nem coloca o equipamento em modo de recuperação. Para devolver os ficheiros ao iPhone, use o Finder/iTunes ou Fotos do Windows.
+
+Os históricos de backups Android e iPhone aparecem em listas separadas. O formulário de restauro Android só aceita backups Android; os backups iPhone ficam disponíveis apenas como arquivo de fotos e vídeos para sincronização manual.
