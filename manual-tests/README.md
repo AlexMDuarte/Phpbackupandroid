@@ -19,4 +19,6 @@ http://127.0.0.1:8080/confirmations.php
 
 Na página `http://localhost:8080/tests.php`, o botão **Testar tudo** instala e abre automaticamente esta APK no equipamento selecionado. Depois marque os testes na aplicação e toque em **Enviar confirmações para o site**. O último relatório aparece no fundo da página de testes.
 
+No teste **Câmaras**, toque em **Abrir câmara** para abrir imediatamente a aplicação de câmara do Android; volte atrás depois de confirmar a imagem e marque o resultado. No teste **Touchscreen**, toque em **Iniciar teste** e toque/desenhe na área apresentada; após 12 pontos o teste é aprovado automaticamente.
+
 Para outro computador ou servidor, substitua a URL no campo da aplicação. O site guarda os últimos 50 envios em `test-results/manual-results.json`, que está excluído do Git.

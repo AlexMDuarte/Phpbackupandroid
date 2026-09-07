@@ -1,12 +1,18 @@
 package pt.alexmduarte.manualtests;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
+import android.provider.MediaStore;
 import android.os.Bundle;
 import android.os.Build;
 import android.provider.Settings;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.view.MotionEvent;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -31,6 +37,7 @@ public class MainActivity extends Activity {
     private final Map<String, TestRow> tests = new LinkedHashMap<>();
     private TextView status;
     private EditText endpoint;
+    private TestRow cameraRow;
 
     private static final String[] NAMES = {"Bateria", "Touchscreen", "Flash", "Câmaras", "Microfone", "Coluna de alta voz", "Auscultador", "Vibrador", "Wi-Fi", "Bluetooth", "GPS"};
     private static final String[] INSTRUCTIONS = {"Verifique o nível e o carregamento.", "Toque em vários pontos do ecrã.", "Ative o flash e confirme a luz.", "Abra as câmaras frontal e traseira.", "Grave e reproduza uma amostra.", "Reproduza um som em volume médio.", "Faça uma chamada ou reproduza áudio.", "Ative a vibração e confirme a resposta.", "Confirme ligação e navegação.", "Ative e procure um dispositivo.", "Abra um mapa e confirme a localização."};
@@ -110,6 +117,40 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void openCamera(TestRow row) {
+        cameraRow = row;
+        try {
+            startActivityForResult(new Intent(MediaStore.ACTION_IMAGE_CAPTURE), 1001);
+        } catch (Exception error) {
+            row.markFail("Não foi possível abrir a câmara: " + error.getMessage());
+        }
+    }
+
+    private void openTouchTest(TestRow row) {
+        TouchPad pad = new TouchPad();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Teste do touchscreen")
+                .setMessage("Toque em pelo menos 12 pontos diferentes da área abaixo.")
+                .setView(pad)
+                .setNegativeButton("Cancelar", null)
+                .create();
+        pad.onComplete = () -> {
+            row.markPass("Área de toque confirmada.");
+            dialog.dismiss();
+        };
+        dialog.show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1001 && cameraRow != null) {
+            if (resultCode == RESULT_OK) cameraRow.markPass("Câmara abriu e devolveu uma imagem.");
+            else cameraRow.markFail("A câmara foi fechada sem confirmar uma imagem.");
+            cameraRow = null;
+        }
+    }
+
     private void showStatus(String message) { runOnUiThread(() -> status.setText(message)); }
 
     private TextView text(String value, int size, int color) {
@@ -137,13 +178,68 @@ public class MainActivity extends Activity {
             actions.setGravity(Gravity.CENTER_VERTICAL);
             Button pass = new Button(MainActivity.this); pass.setText("Funcionou");
             Button fail = new Button(MainActivity.this); fail.setText("Falhou");
-            pass.setOnClickListener(view -> { status = "pass"; heading.setText(name + "  ✓"); });
-            fail.setOnClickListener(view -> { status = "fail"; heading.setText(name + "  ×"); });
+            if (name.equals("Câmaras")) {
+                pass.setText("Abrir câmara");
+                pass.setOnClickListener(view -> openCamera(this));
+            } else if (name.equals("Touchscreen")) {
+                pass.setText("Iniciar teste");
+                pass.setOnClickListener(view -> openTouchTest(this));
+            } else {
+                pass.setOnClickListener(view -> markPass("Confirmado manualmente."));
+            }
+            fail.setOnClickListener(view -> markFail("Marcado como falha."));
             actions.addView(pass, new LinearLayout.LayoutParams(0, dp(48), 1));
             actions.addView(fail, new LinearLayout.LayoutParams(0, dp(48), 1));
             container.addView(actions);
             note.setHint("Observação opcional"); note.setSingleLine(true); note.setTextSize(12);
             container.addView(note, new LinearLayout.LayoutParams(-1, dp(46)));
+        }
+
+        void markPass(String detail) {
+            status = "pass";
+            note.setText(detail);
+        }
+
+        void markFail(String detail) {
+            status = "fail";
+            note.setText(detail);
+        }
+    }
+
+    private class TouchPad extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private int touches;
+        private Runnable onComplete;
+
+        TouchPad() {
+            super(MainActivity.this);
+            setBackgroundColor(Color.rgb(232, 240, 226));
+            paint.setColor(Color.rgb(52, 113, 87));
+            paint.setStrokeWidth(dp(3));
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            canvas.drawText("Toque e arraste aqui", dp(18), dp(32), paint);
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent event) {
+            if (event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE) {
+                touches++;
+                canvasPoint(event.getX(), event.getY());
+                if (touches >= 12 && onComplete != null) {
+                    Runnable complete = onComplete;
+                    onComplete = null;
+                    complete.run();
+                }
+                return true;
+            }
+            return true;
+        }
+
+        private void canvasPoint(float x, float y) {
+            setBackgroundColor(Color.rgb(210, 235, 207));
+            invalidate();
         }
     }
 }
