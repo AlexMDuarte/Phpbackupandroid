@@ -23,6 +23,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.OutputStream;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -102,18 +103,34 @@ public class MainActivity extends Activity {
                     results.put(result);
                 }
                 payload.put("results", results);
-                HttpURLConnection connection = (HttpURLConnection) new URL(target).openConnection();
-                connection.setRequestMethod("POST");
-                connection.setConnectTimeout(8000);
-                connection.setReadTimeout(8000);
-                connection.setDoOutput(true);
-                connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                try (OutputStream output = connection.getOutputStream()) { output.write(payload.toString().getBytes(StandardCharsets.UTF_8)); }
-                int response = connection.getResponseCode();
-                showStatus(response >= 200 && response < 300 ? "Resultados enviados com sucesso." : "O site respondeu com erro HTTP " + response + ".");
-                connection.disconnect();
+                Exception lastError = null;
+                String[] targets = {target, target.replace("localhost", "127.0.0.1")};
+                for (String attempt : targets) {
+                    try {
+                        HttpURLConnection connection = (HttpURLConnection) new URL(attempt).openConnection();
+                        connection.setRequestMethod("POST");
+                        connection.setConnectTimeout(8000);
+                        connection.setReadTimeout(8000);
+                        connection.setDoOutput(true);
+                        connection.setUseCaches(false);
+                        connection.setRequestProperty("Connection", "close");
+                        connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                        byte[] body = payload.toString().getBytes(StandardCharsets.UTF_8);
+                        connection.setFixedLengthStreamingMode(body.length);
+                        try (OutputStream output = connection.getOutputStream()) { output.write(body); }
+                        int response = connection.getResponseCode();
+                        InputStream responseStream = response >= 400 ? connection.getErrorStream() : connection.getInputStream();
+                        if (responseStream != null) responseStream.close();
+                        connection.disconnect();
+                        showStatus(response >= 200 && response < 300 ? "Resultados enviados com sucesso." : "O site respondeu com erro HTTP " + response + ".");
+                        return;
+                    } catch (Exception error) {
+                        lastError = error;
+                    }
+                }
+                throw lastError;
             } catch (Exception error) {
-                showStatus("Não foi possível contactar o site. Confirme que o PHP está aberto em localhost:8080 e toque novamente em Testar tudo.");
+                showStatus("Falha de ligação (" + error.getClass().getSimpleName() + "). Abra o PHP em localhost:8080, toque em Testar tudo na página e tente novamente.");
             }
         });
     }
