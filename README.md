@@ -36,6 +36,8 @@ Para restaurar os contactos manualmente, copie `contactos.vcf` para o telemóvel
 
 Na secção **Restaurar para o telemóvel**, escolha um backup e uma ou mais pastas. O restauro envia novamente os ficheiros para as pastas públicas do Android usando `adb push`. Se selecionar **Contactos (VCF para Download)** e **SMS (XML para Download)**, os ficheiros são colocados diretamente em `Download\contactos.vcf` e `Download\sms-backup.xml` para importar/restaurar no telemóvel.
 
+Ao selecionar SMS, a aplicação PHP instala automaticamente `sms-helper\app\build\outputs\apk\debug\app-debug.apk` com `adb install -r`, envia o XML para Download e abre a aplicação Âncora SMS. O Android ainda mostra os pedidos de permissão e de aplicação SMS predefinida, que têm de ser confirmados manualmente.
+
 Durante o backup e o restauro, a aplicação mostra uma barra de progresso visual com as etapas da operação. A percentagem é uma estimativa enquanto o pedido ADB está em execução; o resultado final apresentado pelo servidor é a confirmação efetiva.
 
 ## Notas
@@ -48,4 +50,4 @@ Durante o backup e o restauro, a aplicação mostra uma barra de progresso visua
 
 ## Restauro de SMS
 
-O projeto auxiliar `sms-helper` contém uma APK Android para exportar SMS para `Download\sms-backup.xml` e restaurá-los com as permissões oficiais do Android. A aplicação tem de ser instalada normalmente e definida temporariamente como aplicação SMS predefinida durante o restauro. Consulte `sms-helper\README.md` para compilar no Android Studio.
+O projeto auxiliar `sms-helper` contém uma APK Android para exportar SMS para `Download\sms-backup.xml` e restaurá-los com as permissões oficiais do Android. A aplicação tem de ser instalada normalmente e definida temporariamente como aplicação SMS predefinida durante o restauro. Consulte `sms-helper\README.md` para compilar no Android Studio. A APK compilada localmente não é incluída no Git por ser um artefacto de build; gere-a com `gradle assembleDebug` antes de usar o restauro automático num clone novo.

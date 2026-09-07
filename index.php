@@ -18,6 +18,8 @@ const BACKUP_DATA = [
     'Contactos' => ['file' => 'contactos.vcf', 'uri' => 'content://com.android.contacts/data', 'projection' => 'display_name:data1:mimetype'],
     'Mensagens' => ['file' => 'sms-backup.xml', 'uri' => 'content://sms', 'projection' => 'address:date:body:type'],
 ];
+const SMS_HELPER_APK = __DIR__ . DIRECTORY_SEPARATOR . 'sms-helper' . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'build' . DIRECTORY_SEPARATOR . 'outputs' . DIRECTORY_SEPARATOR . 'apk' . DIRECTORY_SEPARATOR . 'debug' . DIRECTORY_SEPARATOR . 'app-debug.apk';
+const SMS_HELPER_PACKAGE = 'pt.alexmduarte.smsbackup';
 
 function adbBinary(): string
 {
@@ -283,9 +285,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
                     $failed[] = $label;
                     continue;
                 }
-                $result = runAdb(['-s', $devices[0], 'push', $source, '/sdcard/Download/sms-backup.xml']);
-                if ($result['exitCode'] === 0) {
-                    $restored[] = 'Mensagens para Download';
+                if (!is_file(SMS_HELPER_APK)) {
+                    $failed[] = 'Mensagens (APK auxiliar não encontrada)';
+                    continue;
+                }
+                $install = runAdb(['-s', $devices[0], 'install', '-r', SMS_HELPER_APK]);
+                $push = $install['exitCode'] === 0 ? runAdb(['-s', $devices[0], 'push', $source, '/sdcard/Download/sms-backup.xml']) : ['exitCode' => 1, 'output' => []];
+                if ($install['exitCode'] === 0 && $push['exitCode'] === 0) {
+                    runAdb(['-s', $devices[0], 'shell', 'monkey', '-p', SMS_HELPER_PACKAGE, '1']);
+                    $restored[] = 'APK SMS instalada e XML em Download';
                 } else {
                     $failed[] = $label;
                 }
