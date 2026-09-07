@@ -78,6 +78,69 @@ function iosBackupSource(string $directory): ?string
     return null;
 }
 
+function runSqlite(string $database, string $query): array
+{
+    $command = 'sqlite3 ' . escapeshellarg($database) . ' ' . escapeshellarg($query);
+    $output = [];
+    $exitCode = 0;
+    exec($command . ' 2>&1', $output, $exitCode);
+    return ['output' => $output, 'exitCode' => $exitCode];
+}
+
+function removeDirectory(string $directory): void
+{
+    if (!is_dir($directory)) {
+        return;
+    }
+    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+    foreach ($iterator as $item) {
+        $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+    }
+    rmdir($directory);
+}
+
+function extractIosMedia(string $source, string $destination): int
+{
+    $sourceUdid = iosBackupSource($source);
+    if ($sourceUdid === null) {
+        return 0;
+    }
+    $deviceBackup = $source . DIRECTORY_SEPARATOR . $sourceUdid;
+    $manifest = $deviceBackup . DIRECTORY_SEPARATOR . 'Manifest.db';
+    if (!is_file($manifest)) {
+        return 0;
+    }
+
+    $result = runSqlite($manifest, "select relativePath, fileID from Files where domain='CameraRollDomain' and relativePath <> '';");
+    $copied = 0;
+    $extensions = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'gif', 'mov', 'mp4', 'm4v', 'avi'];
+    foreach ($result['output'] as $row) {
+        $parts = explode('|', $row, 2);
+        if (count($parts) !== 2) {
+            continue;
+        }
+        [$relativePath, $fileId] = $parts;
+        $extension = strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
+        if (!in_array($extension, $extensions, true) || !preg_match('/^[a-f0-9]{40}$/', $fileId)) {
+            continue;
+        }
+        $sourceFile = $deviceBackup . DIRECTORY_SEPARATOR . substr($fileId, 0, 2) . DIRECTORY_SEPARATOR . $fileId;
+        $targetFile = $destination . DIRECTORY_SEPARATOR . 'FotosVideos' . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativePath);
+        if (!is_file($sourceFile)) {
+            continue;
+        }
+        $targetDirectory = dirname($targetFile);
+        if (!is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0775, true);
+        }
+        if (copy($sourceFile, $targetFile)) {
+            $copied++;
+        }
+    }
+
+    return $copied;
+}
+
 function connectedDevices(): array
 {
     $result = runAdb(['devices']);
@@ -303,12 +366,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ios_b
             $message = 'Já existe um backup de iPhone com esse nome. Escolha outro nome.';
             $messageType = 'error';
         } else {
-            mkdir($destination, 0775, true);
-            $result = runIos(['-u', $iosDevices[0], 'backup', '--full', $destination]);
-            if ($result['exitCode'] === 0) {
-                $message = 'Backup completo do iPhone concluído em ' . $backupName . '.';
+            $temporary = BACKUP_ROOT . DIRECTORY_SEPARATOR . $backupName . DIRECTORY_SEPARATOR . '.iphone-backup-temp';
+            mkdir($temporary, 0775, true);
+            $result = runIos(['-u', $iosDevices[0], 'backup', '--full', $temporary]);
+            $mediaCount = $result['exitCode'] === 0 ? extractIosMedia($temporary, dirname($destination)) : 0;
+            removeDirectory($temporary);
+            if ($result['exitCode'] === 0 && $mediaCount > 0) {
+                $message = 'Backup do iPhone concluído: ' . $mediaCount . ' fotos/vídeos guardados em ' . $backupName . '.';
                 $messageType = 'success';
+            } elseif ($result['exitCode'] === 0) {
+                removeDirectory(dirname($destination));
+                $message = 'O backup do iPhone terminou, mas não foram encontradas fotos ou vídeos.';
+                $messageType = 'warning';
             } else {
+                removeDirectory(dirname($destination));
                 $message = 'Não foi possível criar o backup do iPhone: ' . implode(' ', array_slice($result['output'], -2));
                 $messageType = 'error';
             }
@@ -392,35 +463,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
     $devices = connectedDevices();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ios_restore') {
-    $backupName = basename((string) ($_POST['backup_name'] ?? ''));
-    $source = BACKUP_ROOT . DIRECTORY_SEPARATOR . $backupName . DIRECTORY_SEPARATOR . 'iPhone';
-    if ($iosDevices === []) {
-        $message = 'Nenhum iPhone autorizado foi encontrado.';
-        $messageType = 'error';
-    } elseif (!preg_match('/^[\p{L}\p{N}][\p{L}\p{N} _.-]{0,79}$/u', $backupName) || !is_dir($source)) {
-        $message = 'Escolha um backup completo de iPhone válido.';
-        $messageType = 'error';
-    } else {
-        $sourceUdid = iosBackupSource($source);
-        if ($sourceUdid === null) {
-            $message = 'O backup do iPhone não contém uma pasta UDID com Info.plist.';
-            $messageType = 'error';
-            $iosDevices = connectedIosDevices();
-        } else {
-            $result = runIos(['-u', $iosDevices[0], '-s', $sourceUdid, 'restore', '--system', '--settings', $source]);
-        }
-        if (isset($result) && $result['exitCode'] === 0) {
-            $message = 'Restauro completo do iPhone concluído. O equipamento poderá reiniciar.';
-            $messageType = 'success';
-        } elseif (isset($result)) {
-            $message = 'Não foi possível restaurar o iPhone: ' . implode(' ', array_slice($result['output'], -2));
-            $messageType = 'error';
-        }
-    }
-    $iosDevices = connectedIosDevices();
-}
-
 $hasAdb = runAdb(['version'])['exitCode'] === 0;
 $hasIosTool = runIos(['--help'])['exitCode'] === 0;
 $backups = latestBackups();
@@ -465,7 +507,7 @@ $backups = latestBackups();
 
         <section class="ios-panel <?= $iosDevices !== [] ? 'ready' : '' ?>">
             <div class="ios-heading"><div><span class="section-number">iOS</span><h2>Backup de iPhone</h2></div><span class="status-pill <?= $iosDevices !== [] ? 'online' : 'offline' ?>"><i></i><?= $iosDevices !== [] ? 'Ligado' : 'Não detetado' ?></span></div>
-            <p>O iPhone usa o backup oficial local da Apple. Desbloqueie-o e aceite <strong>Confiar neste computador</strong>. O backup é completo e não cria pastas DCIM duplicadas.</p>
+            <p>Copie apenas fotos e vídeos do iPhone. Desbloqueie-o e aceite <strong>Confiar neste computador</strong>. Nenhum restauro iPhone é executado nesta aplicação.</p>
             <?php if ($iosDevices !== []): ?><small class="device-id"> <?= htmlspecialchars($iosDevices[0], ENT_QUOTES, 'UTF-8') ?></small><?php endif; ?>
             <form method="post" class="ios-actions process-form" data-process="ios-backup">
                 <input type="hidden" name="action" value="ios_backup">
@@ -506,15 +548,6 @@ $backups = latestBackups();
                     <div class="section-heading"><div><span class="section-number">03</span><h2>Restaurar para o telemóvel</h2></div></div>
                     <div class="restore-controls"><label>Backup<select name="backup_name" required><?php foreach ($backups as $backup): ?><option value="<?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?></select></label><label>Pastas e ficheiros a restaurar<select name="restore_items[]" multiple required><?php foreach (BACKUP_FOLDERS as $label => $remote): ?><option value="<?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?><option value="Contactos">Contactos (VCF para Download)</option><option value="Mensagens">SMS (XML para Download)</option></select></label></div>
                     <div class="action-row"><button class="primary-button restore-button" type="submit"><span>Restaurar selecionados</span><b>↗</b></button><span class="action-note">VCF e XML são colocados em<br><strong>Download/</strong></span></div>
-                </form>
-            <?php endif; ?>
-            <?php $iosBackups = array_values(array_filter($backups, static fn (array $backup): bool => is_dir(BACKUP_ROOT . DIRECTORY_SEPARATOR . $backup['name'] . DIRECTORY_SEPARATOR . 'iPhone'))); ?>
-            <?php if ($iosBackups !== []): ?>
-                <form method="post" class="ios-restore-form process-form" data-process="ios-restore">
-                    <input type="hidden" name="action" value="ios_restore">
-                    <div class="section-heading"><div><span class="section-number">iOS</span><h2>Restaurar iPhone</h2></div></div>
-                    <div class="restore-controls"><label>Backup completo<select name="backup_name" required><?php foreach ($iosBackups as $backup): ?><option value="<?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?></select></label></div>
-                    <div class="action-row"><button class="primary-button restore-button" type="submit"><span>Restaurar iPhone</span><b>↗</b></button><span class="action-note">O iPhone pode reiniciar<br><strong>Não desligue o cabo</strong></span></div>
                 </form>
             <?php endif; ?>
         <footer><span>Âncora v1.0</span><span>Ligação direta · Sem cloud</span></footer>

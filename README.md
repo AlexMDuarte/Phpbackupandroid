@@ -59,4 +59,4 @@ O projeto auxiliar `sms-helper` contém uma APK Android para exportar SMS para `
 
 ## iPhone
 
-Na secção **Backup de iPhone**, escreva um nome e crie um backup completo. O restauro também é completo, porque o iOS não permite à aplicação PHP copiar/restaurar pastas públicas individualmente como o Android. O iPhone pode pedir o código de desbloqueio e reiniciar durante o restauro; não desligue o cabo.
+Na secção **Backup de iPhone**, escreva um nome e crie uma cópia apenas de fotos e vídeos. O backup Apple completo é usado temporariamente para obter a Camera Roll, mas é apagado no fim; o resultado guardado fica em `iPhone\FotosVideos`. Esta aplicação não executa qualquer restauro iPhone nem coloca o equipamento em modo de recuperação. Para devolver os ficheiros ao iPhone, use o Finder/iTunes ou Fotos do Windows.
