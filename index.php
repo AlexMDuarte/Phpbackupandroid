@@ -67,6 +67,17 @@ function connectedIosDevices(): array
     return $result['exitCode'] === 0 ? array_values(array_filter(array_map('trim', $result['output']))) : [];
 }
 
+function iosBackupSource(string $directory): ?string
+{
+    foreach (glob($directory . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR) ?: [] as $candidate) {
+        if (is_file($candidate . DIRECTORY_SEPARATOR . 'Info.plist')) {
+            return basename($candidate);
+        }
+    }
+
+    return null;
+}
+
 function connectedDevices(): array
 {
     $result = runAdb(['devices']);
@@ -391,11 +402,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ios_r
         $message = 'Escolha um backup completo de iPhone válido.';
         $messageType = 'error';
     } else {
-        $result = runIos(['-u', $iosDevices[0], 'restore', '--system', '--settings', $source]);
-        if ($result['exitCode'] === 0) {
+        $sourceUdid = iosBackupSource($source);
+        if ($sourceUdid === null) {
+            $message = 'O backup do iPhone não contém uma pasta UDID com Info.plist.';
+            $messageType = 'error';
+            $iosDevices = connectedIosDevices();
+        } else {
+            $result = runIos(['-u', $iosDevices[0], '-s', $sourceUdid, 'restore', '--system', '--settings', $source]);
+        }
+        if (isset($result) && $result['exitCode'] === 0) {
             $message = 'Restauro completo do iPhone concluído. O equipamento poderá reiniciar.';
             $messageType = 'success';
-        } else {
+        } elseif (isset($result)) {
             $message = 'Não foi possível restaurar o iPhone: ' . implode(' ', array_slice($result['output'], -2));
             $messageType = 'error';
         }
