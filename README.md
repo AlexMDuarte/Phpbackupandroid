@@ -1,6 +1,6 @@
 # Âncora
 
-Aplicação PHP local para criar backups de telemóveis Android e iPhone. Os ficheiros permanecem no computador e não são enviados para a cloud.
+Aplicação PHP local para criar backups de telemóveis Android. Os ficheiros permanecem no computador e não são enviados para a cloud.
 
 ## Requisitos
 
@@ -8,7 +8,6 @@ Aplicação PHP local para criar backups de telemóveis Android e iPhone. Os fic
 - Android SDK Platform-Tools (`adb`)
 - Telemóvel Android com **Opções de programador** e **Depuração USB** ativas
 - Cabo USB de dados
-- Para iPhone: `libimobiledevice` com `idevice_id` e `idevicebackup2`
 
 ## Arranque no Windows
 
@@ -22,8 +21,6 @@ adb devices
 ```
 
 O estado deve aparecer como `device`, não `unauthorized`.
-
-Para iPhone, ligue o cabo USB, desbloqueie o equipamento e aceite **Confiar neste computador**. A aplicação usa `idevicebackup2` para criar um backup local completo.
 
 5. Inicie a aplicação:
 
@@ -57,8 +54,3 @@ Durante o backup e o restauro, a aplicação mostra uma barra de progresso visua
 
 O projeto auxiliar `sms-helper` contém uma APK Android para exportar SMS para `Download\sms-backup.xml` e restaurá-los com as permissões oficiais do Android. A aplicação tem de ser instalada normalmente e definida temporariamente como aplicação SMS predefinida durante o restauro. Consulte `sms-helper\README.md` para compilar no Android Studio. A APK compilada localmente não é incluída no Git por ser um artefacto de build; gere-a com `gradle assembleDebug` antes de usar o restauro automático num clone novo.
 
-## iPhone
-
-Na secção **Backup de iPhone**, escreva um nome e crie uma cópia apenas de fotos e vídeos. O backup Apple completo é usado temporariamente para obter a Camera Roll, mas é apagado no fim; o resultado guardado fica em `iPhone\FotosVideos`. Esta aplicação não executa qualquer restauro iPhone nem coloca o equipamento em modo de recuperação. Para devolver os ficheiros ao iPhone, use o Finder/iTunes ou Fotos do Windows.
-
-Os históricos de backups Android e iPhone aparecem em listas separadas. O formulário de restauro Android só aceita backups Android; os backups iPhone ficam disponíveis apenas como arquivo de fotos e vídeos para sincronização manual.
