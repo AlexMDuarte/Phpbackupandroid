@@ -103,11 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run-t
             $results = runDeviceTests($selected);
         }
     }
-}
-$deviceName = '';
-if ($selected !== '') {
     $nameResult = testAdb(['-s', $selected, 'shell', 'getprop', 'ro.product.model']);
     $deviceName = trim(testOutput($nameResult));
+} else {
+    $deviceName = '';
 }
 ?>
 <!doctype html>
