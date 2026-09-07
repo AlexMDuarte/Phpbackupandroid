@@ -32,4 +32,6 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 4. Para restaurar, use o XML criado pela aplicação PHP em `Download/sms-backup.xml`, toque em **Escolher XML e restaurar SMS** e aceite temporariamente a aplicação SMS predefinida.
 5. Depois da restauração, volte a selecionar a aplicação SMS habitual como predefinida.
 
+Se o Android não apresentar o pedido automaticamente, abra **Definições > Aplicações > Aplicações predefinidas > Aplicação SMS**, selecione **Âncora SMS**, conceda novamente as permissões e repita a importação. A aplicação só apresenta sucesso quando o `ContentResolver` confirma cada inserção; se o sistema recusar, mostra a primeira falha.
+
 O XML gerado usa elementos `sms` com endereço, data, corpo, tipo e estado de leitura. Faça uma cópia do ficheiro antes de restaurar e evite executar a operação duas vezes, pois isso pode duplicar mensagens.

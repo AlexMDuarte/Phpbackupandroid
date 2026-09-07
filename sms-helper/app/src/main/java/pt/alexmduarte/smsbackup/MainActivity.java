@@ -122,19 +122,34 @@ public class MainActivity extends Activity {
 
     private void chooseXml() {
         if (!ensurePermissions()) return;
-        requestDefaultSmsApp();
-        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        picker.setType("text/xml");
-        picker.addCategory(Intent.CATEGORY_OPENABLE);
-        startActivityForResult(picker, PICK_XML);
+        if (isDefaultSmsApp()) {
+            openXmlPicker();
+        } else {
+            requestDefaultSmsApp();
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 42) {
+            if (isDefaultSmsApp()) {
+                openXmlPicker();
+            } else {
+                showStatus("Defina Âncora SMS como aplicação SMS predefinida para restaurar.");
+            }
+            return;
+        }
         if (requestCode == PICK_XML && resultCode == RESULT_OK && data != null) {
             new Thread(() -> importSms(data.getData())).start();
         }
+    }
+
+    private void openXmlPicker() {
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        picker.setType("text/xml");
+        picker.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(picker, PICK_XML);
     }
 
     private void importSms(Uri source) {
@@ -151,7 +166,10 @@ public class MainActivity extends Activity {
                 values.put(Telephony.Sms.DATE, Long.parseLong(sms.getAttribute("date")));
                 values.put(Telephony.Sms.TYPE, Integer.parseInt(sms.getAttribute("type")));
                 values.put(Telephony.Sms.READ, 1);
-                resolver.insert(Telephony.Sms.CONTENT_URI, values);
+                Uri inserted = resolver.insert(Telephony.Sms.CONTENT_URI, values);
+                if (inserted == null) {
+                    throw new IllegalStateException("O Android recusou a inserção da mensagem " + (index + 1));
+                }
                 count++;
             }
             showStatus(count + " SMS restaurados.");
@@ -179,6 +197,14 @@ public class MainActivity extends Activity {
             intent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, getPackageName());
             startActivity(intent);
         }
+    }
+
+    private boolean isDefaultSmsApp() {
+        if (Build.VERSION.SDK_INT >= 29) {
+            RoleManager roles = getSystemService(RoleManager.class);
+            return roles != null && roles.isRoleHeld(RoleManager.ROLE_SMS);
+        }
+        return getPackageName().equals(Telephony.Sms.getDefaultSmsPackage(this));
     }
 
     private String xml(String value) {
