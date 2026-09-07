@@ -34,5 +34,16 @@
                 <data android:scheme="sms" />
             </intent-filter>
         </activity>
+        <receiver android:name=".SmsReceiver" android:permission="android.permission.BROADCAST_SMS" android:exported="true">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_DELIVER" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".MmsReceiver" android:permission="android.permission.BROADCAST_WAP_PUSH" android:exported="true">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+                <data android:mimeType="application/vnd.wap.mms-message" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

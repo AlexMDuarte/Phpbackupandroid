@@ -34,4 +34,6 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 
 Se o Android não apresentar o pedido automaticamente, abra **Definições > Aplicações > Aplicações predefinidas > Aplicação SMS**, selecione **Âncora SMS**, conceda novamente as permissões e repita a importação. A aplicação só apresenta sucesso quando o `ContentResolver` confirma cada inserção; se o sistema recusar, mostra a primeira falha.
 
+A APK declara os receivers `SMS_DELIVER` e `WAP_PUSH_DELIVER` necessários para aparecer na lista de aplicações SMS elegíveis.
+
 O XML gerado usa elementos `sms` com endereço, data, corpo, tipo e estado de leitura. Faça uma cópia do ficheiro antes de restaurar e evite executar a operação duas vezes, pois isso pode duplicar mensagens.
