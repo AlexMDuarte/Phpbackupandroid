@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 const RESULTS_FILE = __DIR__ . DIRECTORY_SEPARATOR . 'test-results' . DIRECTORY_SEPARATOR . 'manual-results.json';
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
