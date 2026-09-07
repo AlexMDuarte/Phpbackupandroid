@@ -30,11 +30,11 @@ php -S localhost:8080
 
 6. Abra http://localhost:8080 no navegador.
 
-Os backups são criados em `backups\NOME-ESCOLHIDO`. No formulário, escreva manualmente o nome do backup. A aplicação copia as pastas `DCIM`, `Pictures`, `Movies`, `Music`, `Documents` e `Download` que forem selecionadas. Também pode exportar contactos e mensagens através do serviço de conteúdos do Android; os contactos ficam guardados como `contactos.vcf` e as mensagens como `mensagens.txt`.
+Os backups são criados em `backups\NOME-ESCOLHIDO`. No formulário, escreva manualmente o nome do backup. A aplicação copia as pastas `DCIM`, `Pictures`, `Movies`, `Music`, `Documents` e `Download` que forem selecionadas. Também pode exportar contactos e mensagens através do serviço de conteúdos do Android; os contactos ficam guardados como `contactos.vcf` e as mensagens como `sms-backup.xml`.
 
 Para restaurar os contactos manualmente, copie `contactos.vcf` para o telemóvel, abra-o no gestor de ficheiros e escolha **Contactos** como aplicação de importação. Se o Android não abrir o ficheiro diretamente, use a opção **Importar de ficheiro** na aplicação Contactos e selecione o `.vcf`.
 
-Na secção **Restaurar para o telemóvel**, escolha um backup e uma ou mais pastas. O restauro envia novamente os ficheiros para as pastas públicas do Android usando `adb push`. Se selecionar **Contactos (VCF para Download)**, o ficheiro é colocado diretamente em `Download\contactos.vcf` para abrir e importar manualmente no telemóvel.
+Na secção **Restaurar para o telemóvel**, escolha um backup e uma ou mais pastas. O restauro envia novamente os ficheiros para as pastas públicas do Android usando `adb push`. Se selecionar **Contactos (VCF para Download)** e **SMS (XML para Download)**, os ficheiros são colocados diretamente em `Download\contactos.vcf` e `Download\sms-backup.xml` para importar/restaurar no telemóvel.
 
 Durante o backup e o restauro, a aplicação mostra uma barra de progresso visual com as etapas da operação. A percentagem é uma estimativa enquanto o pedido ADB está em execução; o resultado final apresentado pelo servidor é a confirmação efetiva.
 

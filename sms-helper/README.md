@@ -29,7 +29,7 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 1. Instale o APK no Android.
 2. Abra Âncora SMS e conceda as permissões solicitadas.
 3. Toque em **Exportar SMS para Download**.
-4. Para restaurar, coloque o XML no telemóvel, toque em **Escolher XML e restaurar SMS** e aceite temporariamente a aplicação SMS predefinida.
+4. Para restaurar, use o XML criado pela aplicação PHP em `Download/sms-backup.xml`, toque em **Escolher XML e restaurar SMS** e aceite temporariamente a aplicação SMS predefinida.
 5. Depois da restauração, volte a selecionar a aplicação SMS habitual como predefinida.
 
 O XML gerado usa elementos `sms` com endereço, data, corpo, tipo e estado de leitura. Faça uma cópia do ficheiro antes de restaurar e evite executar a operação duas vezes, pois isso pode duplicar mensagens.

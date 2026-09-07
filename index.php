@@ -16,7 +16,7 @@ const BACKUP_FOLDERS = [
 ];
 const BACKUP_DATA = [
     'Contactos' => ['file' => 'contactos.vcf', 'uri' => 'content://com.android.contacts/data', 'projection' => 'display_name:data1:mimetype'],
-    'Mensagens' => ['file' => 'mensagens.txt', 'uri' => 'content://sms', 'projection' => 'address:date:body:type'],
+    'Mensagens' => ['file' => 'sms-backup.xml', 'uri' => 'content://sms', 'projection' => 'address:date:body:type'],
 ];
 
 function adbBinary(): string
@@ -117,6 +117,30 @@ function contactsToVcard(array $lines): string
     return $vcard === [] ? '' : implode("\r\n", $vcard) . "\r\n";
 }
 
+function xmlEscape(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+}
+
+function messagesToXml(array $lines): string
+{
+    $messages = [];
+    $raw = implode("\n", $lines);
+    preg_match_all('/Row:\s*\d+\s+address=(.*?),\s*date=(\d+),\s*body=(.*?),\s*type=(\d+)/s', $raw, $rows, PREG_SET_ORDER);
+    foreach ($rows as $matches) {
+
+        $messages[] = sprintf(
+            '  <sms address="%s" date="%s" type="%s" body="%s" read="1" />',
+            xmlEscape($matches[1]),
+            $matches[2],
+            $matches[4],
+            xmlEscape($matches[3])
+        );
+    }
+
+    return sprintf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>\r\n<smses count=\"%d\">\r\n%s\r\n</smses>\r\n", count($messages), implode("\r\n", $messages));
+}
+
 function latestBackups(): array
 {
     if (!is_dir(BACKUP_ROOT)) {
@@ -172,8 +196,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'backu
                     $query = array_merge($query, ['--where', $data['where']]);
                 }
                 $result = runAdb($query);
-                $content = $label === 'Contactos' ? contactsToVcard($result['output']) : implode(PHP_EOL, $result['output']);
-                if ($result['exitCode'] === 0 && $content !== '' && file_put_contents($destination . DIRECTORY_SEPARATOR . $data['file'], $content) !== false) {
+                $content = $label === 'Contactos' ? contactsToVcard($result['output']) : messagesToXml($result['output']);
+                $hasData = $label === 'Contactos' ? $content !== '' : preg_match('/count="[1-9]\d*"/', $content) === 1;
+                if ($result['exitCode'] === 0 && $hasData && file_put_contents($destination . DIRECTORY_SEPARATOR . $data['file'], $content) !== false) {
                     $copied[] = $label;
                     continue;
                 }
@@ -223,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
     $backupName = basename((string) ($_POST['backup_name'] ?? ''));
     $backupPath = BACKUP_ROOT . DIRECTORY_SEPARATOR . $backupName;
     $restoreItems = $_POST['restore_items'] ?? [];
-    $restoreItems = array_values(array_intersect(array_merge(array_keys(BACKUP_FOLDERS), ['Contactos']), is_array($restoreItems) ? $restoreItems : []));
+    $restoreItems = array_values(array_intersect(array_merge(array_keys(BACKUP_FOLDERS), ['Contactos', 'Mensagens']), is_array($restoreItems) ? $restoreItems : []));
 
     if ($devices === []) {
         $message = 'Nenhum equipamento autorizado foi encontrado.';
@@ -247,6 +272,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
                 $result = runAdb(['-s', $devices[0], 'push', $source, '/sdcard/Download/contactos.vcf']);
                 if ($result['exitCode'] === 0) {
                     $restored[] = 'Contactos para Download';
+                } else {
+                    $failed[] = $label;
+                }
+                continue;
+            }
+            if ($label === 'Mensagens') {
+                $source = $backupPath . DIRECTORY_SEPARATOR . BACKUP_DATA['Mensagens']['file'];
+                if (!is_file($source)) {
+                    $failed[] = $label;
+                    continue;
+                }
+                $result = runAdb(['-s', $devices[0], 'push', $source, '/sdcard/Download/sms-backup.xml']);
+                if ($result['exitCode'] === 0) {
+                    $restored[] = 'Mensagens para Download';
                 } else {
                     $failed[] = $label;
                 }
@@ -341,8 +380,8 @@ $backups = latestBackups();
                 <form method="post" class="restore-form process-form" data-process="restore">
                     <input type="hidden" name="action" value="restore">
                     <div class="section-heading"><div><span class="section-number">03</span><h2>Restaurar para o telemóvel</h2></div></div>
-                    <div class="restore-controls"><label>Backup<select name="backup_name" required><?php foreach ($backups as $backup): ?><option value="<?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?></select></label><label>Pastas e ficheiros a restaurar<select name="restore_items[]" multiple required><?php foreach (BACKUP_FOLDERS as $label => $remote): ?><option value="<?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?><option value="Contactos">Contactos (VCF para Download)</option></select></label></div>
-                    <div class="action-row"><button class="primary-button restore-button" type="submit"><span>Restaurar selecionados</span><b>↗</b></button><span class="action-note">O VCF é colocado em<br><strong>Download/contactos.vcf</strong></span></div>
+                    <div class="restore-controls"><label>Backup<select name="backup_name" required><?php foreach ($backups as $backup): ?><option value="<?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?></select></label><label>Pastas e ficheiros a restaurar<select name="restore_items[]" multiple required><?php foreach (BACKUP_FOLDERS as $label => $remote): ?><option value="<?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?><option value="Contactos">Contactos (VCF para Download)</option><option value="Mensagens">SMS (XML para Download)</option></select></label></div>
+                    <div class="action-row"><button class="primary-button restore-button" type="submit"><span>Restaurar selecionados</span><b>↗</b></button><span class="action-note">VCF e XML são colocados em<br><strong>Download/</strong></span></div>
                 </form>
             <?php endif; ?>
         <footer><span>Âncora v1.0</span><span>Ligação direta · Sem cloud</span></footer>
