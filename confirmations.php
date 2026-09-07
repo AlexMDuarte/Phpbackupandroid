@@ -11,9 +11,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $payload = json_decode((string) file_get_contents('php://input'), true);
-if (!is_array($payload) || !isset($payload['device'], $payload['results']) || !is_array($payload['results'])) {
+if (!is_array($payload) || !isset($payload['device'], $payload['results'])) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Dados de teste inválidos.']);
+    exit;
+}
+
+if (isset($payload['results']['name'])) {
+    $payload['results'] = [$payload['results']];
+}
+if (!is_array($payload['results'])) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'A lista de resultados é inválida.']);
     exit;
 }
 

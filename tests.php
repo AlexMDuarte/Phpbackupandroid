@@ -98,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run-t
         if ($install['exitCode'] !== 0) {
             $results = [testResult('APK de testes', '!', 'fail', 'Não foi possível instalar a APK: ' . testOutput($install))];
         } else {
+            testAdb(['-s', $selected, 'reverse', 'tcp:8080', 'tcp:8080']);
             testAdb(['-s', $selected, 'shell', 'monkey', '-p', MANUAL_TESTS_PACKAGE, '1']);
             $results = runDeviceTests($selected);
         }

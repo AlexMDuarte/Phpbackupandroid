@@ -111,8 +111,9 @@ public class MainActivity extends Activity {
                 try (OutputStream output = connection.getOutputStream()) { output.write(payload.toString().getBytes(StandardCharsets.UTF_8)); }
                 int response = connection.getResponseCode();
                 showStatus(response >= 200 && response < 300 ? "Resultados enviados com sucesso." : "O site respondeu com erro HTTP " + response + ".");
+                connection.disconnect();
             } catch (Exception error) {
-                showStatus("Não foi possível contactar o site: " + error.getMessage());
+                showStatus("Não foi possível contactar o site. Confirme que o PHP está aberto em localhost:8080 e toque novamente em Testar tudo.");
             }
         });
     }
