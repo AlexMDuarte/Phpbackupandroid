@@ -105,7 +105,8 @@ public class MainActivity extends Activity {
                 payload.put("results", results);
                 Exception lastError = null;
                 String[] targets = {target, target.replace("localhost", "127.0.0.1")};
-                for (String attempt : targets) {
+                for (int retry = 0; retry < 3; retry++) {
+                    for (String attempt : targets) {
                     try {
                         HttpURLConnection connection = (HttpURLConnection) new URL(attempt).openConnection();
                         connection.setRequestMethod("POST");
@@ -127,10 +128,11 @@ public class MainActivity extends Activity {
                     } catch (Exception error) {
                         lastError = error;
                     }
+                    }
                 }
                 throw lastError;
             } catch (Exception error) {
-                showStatus("Falha de ligação (" + error.getClass().getSimpleName() + "). Abra o PHP em localhost:8080, toque em Testar tudo na página e tente novamente.");
+                showStatus("Falha de ligação (" + error.getClass().getSimpleName() + ": " + error.getMessage() + "). Confirme o PHP e o túnel ADB.");
             }
         });
     }
