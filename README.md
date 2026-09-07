@@ -30,6 +30,8 @@ php -S localhost:8080
 
 6. Abra http://localhost:8080 no navegador.
 
+Para testar o equipamento, abra http://localhost:8080/tests.php, escolha o dispositivo autorizado e clique em **Testar tudo**. A página verifica automaticamente bateria, capacidades de touchscreen, câmaras, flash, microfone, áudio, vibrador, Wi-Fi, Bluetooth e localização/GPS. Componentes físicos de saída mostram **Confirmar**, porque precisam de uma confirmação humana de que houve som, vibração, imagem ou resposta ao toque.
+
 Os backups são criados em `backups\NOME-ESCOLHIDO`. No formulário, escreva manualmente o nome do backup. A aplicação copia as pastas `DCIM`, `Pictures`, `Movies`, `Music`, `Documents` e `Download` que forem selecionadas. Também pode exportar contactos e mensagens através do serviço de conteúdos do Android; os contactos ficam guardados como `contactos.vcf` e as mensagens como `sms-backup.xml`.
 
 Para restaurar os contactos manualmente, copie `contactos.vcf` para o telemóvel, abra-o no gestor de ficheiros e escolha **Contactos** como aplicação de importação. Se o Android não abrir o ficheiro diretamente, use a opção **Importar de ficheiro** na aplicação Contactos e selecione o `.vcf`.

@@ -341,7 +341,7 @@ $backups = latestBackups();
     <main class="shell">
         <header class="topbar">
             <a class="brand" href="."><span class="brand-mark">A</span><span>Âncora</span></a>
-            <span class="local-badge"><span class="dot"></span> Execução local</span>
+            <nav class="main-nav"><a class="active" href=".">Backup</a><a href="tests.php">Testes</a></nav><span class="local-badge"><span class="dot"></span> Execução local</span>
         </header>
 
         <section class="intro">
