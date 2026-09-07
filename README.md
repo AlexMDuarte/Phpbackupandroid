@@ -45,3 +45,7 @@ Durante o backup e o restauro, a aplicação mostra uma barra de progresso visua
 - Contactos e mensagens podem ser bloqueados pelo Android por razões de segurança. Se o comando `content query` for recusado, a aplicação mostra a falha e não apaga dados.
 - Contactos e mensagens são exportados para leitura, mas não são reinseridos automaticamente: o Android exige uma aplicação de contactos/SMS com permissões próprias ou uma confirmação explícita do sistema para esse processo.
 - Esta versão não copia dados privados de outras aplicações nem conteúdos protegidos pelo Android.
+
+## Restauro de SMS
+
+O projeto auxiliar `sms-helper` contém uma APK Android para exportar SMS para `Download\sms-backup.xml` e restaurá-los com as permissões oficiais do Android. A aplicação tem de ser instalada normalmente e definida temporariamente como aplicação SMS predefinida durante o restauro. Consulte `sms-helper\README.md` para compilar no Android Studio.
