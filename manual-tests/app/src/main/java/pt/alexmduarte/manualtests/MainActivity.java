@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.os.Bundle;
 import android.os.Build;
 import android.provider.Settings;
@@ -34,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
+    private static final String LOG_TAG = "AncoraManualTests";
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private final Map<String, TestRow> tests = new LinkedHashMap<>();
     private TextView status;
@@ -132,6 +134,7 @@ public class MainActivity extends Activity {
                 }
                 throw lastError;
             } catch (Exception error) {
+                Log.e(LOG_TAG, "Falha no envio para o site", error);
                 showStatus("Falha de ligação (" + error.getClass().getSimpleName() + ": " + error.getMessage() + "). Confirme o PHP e o túnel ADB.");
             }
         });
