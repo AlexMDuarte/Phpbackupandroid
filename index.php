@@ -78,6 +78,11 @@ function iosBackupSource(string $directory): ?string
     return null;
 }
 
+function isIosMediaBackup(string $name): bool
+{
+    return is_dir(BACKUP_ROOT . DIRECTORY_SEPARATOR . $name . DIRECTORY_SEPARATOR . 'iPhone');
+}
+
 function runSqlite(string $database, string $query): array
 {
     $command = 'sqlite3 ' . escapeshellarg($database) . ' ' . escapeshellarg($query);
@@ -394,7 +399,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
     $restoreItems = $_POST['restore_items'] ?? [];
     $restoreItems = array_values(array_intersect(array_merge(array_keys(BACKUP_FOLDERS), ['Contactos', 'Mensagens']), is_array($restoreItems) ? $restoreItems : []));
 
-    if ($devices === []) {
+    if (isIosMediaBackup($backupName)) {
+        $message = 'Este é um backup de fotos e vídeos do iPhone. Copie a pasta FotosVideos para o computador e sincronize-a com o iPhone através do Finder/iTunes ou da aplicação Fotos do Windows.';
+        $messageType = 'warning';
+    } elseif ($devices === []) {
         $message = 'Nenhum equipamento autorizado foi encontrado.';
         $messageType = 'error';
     } elseif (!preg_match('/^[\p{L}\p{N}][\p{L}\p{N} _.-]{0,79}$/u', $backupName) || !is_dir($backupPath)) {
@@ -466,6 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
 $hasAdb = runAdb(['version'])['exitCode'] === 0;
 $hasIosTool = runIos(['--help'])['exitCode'] === 0;
 $backups = latestBackups();
+$androidBackups = array_values(array_filter($backups, static fn (array $backup): bool => !isIosMediaBackup($backup['name'])));
 ?>
 <!doctype html>
 <html lang="pt-PT">
@@ -546,8 +555,9 @@ $backups = latestBackups();
                 <form method="post" class="restore-form process-form" data-process="restore">
                     <input type="hidden" name="action" value="restore">
                     <div class="section-heading"><div><span class="section-number">03</span><h2>Restaurar para o telemóvel</h2></div></div>
-                    <div class="restore-controls"><label>Backup<select name="backup_name" required><?php foreach ($backups as $backup): ?><option value="<?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?></select></label><label>Pastas e ficheiros a restaurar<select name="restore_items[]" multiple required><?php foreach (BACKUP_FOLDERS as $label => $remote): ?><option value="<?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?><option value="Contactos">Contactos (VCF para Download)</option><option value="Mensagens">SMS (XML para Download)</option></select></label></div>
+                    <?php if ($androidBackups !== []): ?><div class="restore-controls"><label>Backup<select name="backup_name" required><?php foreach ($androidBackups as $backup): ?><option value="<?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?></select></label><label>Pastas e ficheiros a restaurar<select name="restore_items[]" multiple required><?php foreach (BACKUP_FOLDERS as $label => $remote): ?><option value="<?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?><option value="Contactos">Contactos (VCF para Download)</option><option value="Mensagens">SMS (XML para Download)</option></select></label></div>
                     <div class="action-row"><button class="primary-button restore-button" type="submit"><span>Restaurar selecionados</span><b>↗</b></button><span class="action-note">VCF e XML são colocados em<br><strong>Download/</strong></span></div>
+                    <?php else: ?><div class="empty-state">Não existem backups Android para restaurar. Os backups iPhone são apenas fotos e vídeos para sincronização manual.</div><?php endif; ?>
                 </form>
             <?php endif; ?>
         <footer><span>Âncora v1.0</span><span>Ligação direta · Sem cloud</span></footer>
