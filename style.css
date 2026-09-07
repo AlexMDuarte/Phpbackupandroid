@@ -37,6 +37,7 @@ h1 em { color: var(--green); font-weight: 400; }
 .status-icon { display: grid; place-items: center; width: 48px; height: 48px; margin-right: 18px; color: var(--green); border: 1px solid #a8c9ae; font-size: 24px; }
 .status-copy { display: grid; gap: 4px; }
 .status-copy strong { font-size: 18px; letter-spacing: -.03em; }
+.manual-report { margin-top: 38px; padding-top: 34px; border-top: 1px solid var(--line); }.manual-report p { color: var(--muted); font-size: 13px; }.manual-report-grid { display: flex; flex-wrap: wrap; gap: 8px; }.manual-report-grid span { padding: 8px 10px; font-family: var(--mono); font-size: 10px; }.report-pass { color: var(--green); background: #e3f2df; }.report-fail { color: var(--red); background: #f8e1dc; }
 .status-copy small, .status-side small, .folder-card small, .backup-item small { color: var(--muted); font-size: 11px; }
 .status-side { display: grid; justify-items: end; gap: 8px; margin-left: auto; }
 .status-pill { padding: 5px 8px; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }

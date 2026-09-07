@@ -82,6 +82,11 @@ function runDeviceTests(string $device): array
 $devices = testDevices();
 $selected = (string) ($_POST['device'] ?? ($devices[0] ?? ''));
 $results = [];
+$latestManual = [];
+if (is_file(__DIR__ . DIRECTORY_SEPARATOR . 'test-results' . DIRECTORY_SEPARATOR . 'manual-results.json')) {
+    $history = json_decode((string) file_get_contents(__DIR__ . DIRECTORY_SEPARATOR . 'test-results' . DIRECTORY_SEPARATOR . 'manual-results.json'), true);
+    $latestManual = is_array($history) && $history !== [] ? $history[count($history) - 1] : [];
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run-tests' && in_array($selected, $devices, true)) {
     $results = runDeviceTests($selected);
 }
@@ -113,6 +118,7 @@ if ($selected !== '') {
         <?php foreach ($results as $result): ?><article class="test-card <?= htmlspecialchars($result['status'], ENT_QUOTES, 'UTF-8') ?>"><span class="test-icon"><?= $result['icon'] ?></span><div><strong><?= htmlspecialchars($result['name'], ENT_QUOTES, 'UTF-8') ?></strong><small><?= htmlspecialchars($result['detail'], ENT_QUOTES, 'UTF-8') ?></small></div><span class="test-status"><?= $result['status'] === 'pass' ? 'OK' : ($result['status'] === 'manual' ? 'Confirmar' : 'Falhou') ?></span></article><?php endforeach; ?>
     </section>
     <?php if ($results === []): ?><div class="empty-state test-empty">Os resultados dos testes aparecem aqui depois de executar a verificação.</div><?php endif; ?>
+    <?php if ($latestManual !== []): ?><section class="manual-report"><div class="section-heading"><div><span class="section-number">Último envio</span><h2>Confirmações manuais</h2></div><span class="count-label"><?= htmlspecialchars((string) ($latestManual['received_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span></div><p><strong><?= htmlspecialchars((string) ($latestManual['model'] ?? 'Equipamento'), ENT_QUOTES, 'UTF-8') ?></strong> · <?= htmlspecialchars((string) ($latestManual['device'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p><div class="manual-report-grid"><?php foreach (($latestManual['results'] ?? []) as $result): ?><span class="report-<?= htmlspecialchars((string) $result['status'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string) $result['name'], ENT_QUOTES, 'UTF-8') ?>: <?= $result['status'] === 'pass' ? 'OK' : 'Falhou' ?></span><?php endforeach; ?></div></section><?php endif; ?>
     <footer><span>Âncora · Diagnóstico</span><span>Ligação ADB local</span></footer>
 </main>
 </body>
