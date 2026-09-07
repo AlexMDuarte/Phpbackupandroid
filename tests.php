@@ -16,6 +16,9 @@ function testAdb(array $arguments): array
     return ['output' => $output, 'exitCode' => $exitCode];
 }
 
+const MANUAL_TESTS_APK = __DIR__ . DIRECTORY_SEPARATOR . 'manual-tests' . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'build' . DIRECTORY_SEPARATOR . 'outputs' . DIRECTORY_SEPARATOR . 'apk' . DIRECTORY_SEPARATOR . 'debug' . DIRECTORY_SEPARATOR . 'app-debug.apk';
+const MANUAL_TESTS_PACKAGE = 'pt.alexmduarte.manualtests';
+
 function testDevices(): array
 {
     $result = testAdb(['devices']);
@@ -88,7 +91,17 @@ if (is_file(__DIR__ . DIRECTORY_SEPARATOR . 'test-results' . DIRECTORY_SEPARATOR
     $latestManual = is_array($history) && $history !== [] ? $history[count($history) - 1] : [];
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'run-tests' && in_array($selected, $devices, true)) {
-    $results = runDeviceTests($selected);
+    if (!is_file(MANUAL_TESTS_APK)) {
+        $results = [testResult('APK de testes', '!', 'fail', 'A APK auxiliar não foi compilada em manual-tests/app/build/outputs/apk/debug/app-debug.apk.')];
+    } else {
+        $install = testAdb(['-s', $selected, 'install', '-r', MANUAL_TESTS_APK]);
+        if ($install['exitCode'] !== 0) {
+            $results = [testResult('APK de testes', '!', 'fail', 'Não foi possível instalar a APK: ' . testOutput($install))];
+        } else {
+            testAdb(['-s', $selected, 'shell', 'monkey', '-p', MANUAL_TESTS_PACKAGE, '1']);
+            $results = runDeviceTests($selected);
+        }
+    }
 }
 $deviceName = '';
 if ($selected !== '') {
