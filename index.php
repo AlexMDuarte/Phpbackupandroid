@@ -20,6 +20,8 @@ const BACKUP_DATA = [
 ];
 const SMS_HELPER_APK = __DIR__ . DIRECTORY_SEPARATOR . 'sms-helper' . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'build' . DIRECTORY_SEPARATOR . 'outputs' . DIRECTORY_SEPARATOR . 'apk' . DIRECTORY_SEPARATOR . 'debug' . DIRECTORY_SEPARATOR . 'app-debug.apk';
 const SMS_HELPER_PACKAGE = 'pt.alexmduarte.smsbackup';
+const IOS_BACKUP_TOOL = 'idevicebackup2';
+const IOS_DEVICE_TOOL = 'idevice_id';
 
 function adbBinary(): string
 {
@@ -39,6 +41,30 @@ function runAdb(array $arguments): array
     exec($command . ' 2>&1', $output, $exitCode);
 
     return ['output' => $output, 'exitCode' => $exitCode];
+}
+
+function runIos(array $arguments): array
+{
+    $command = escapeshellcmd(IOS_BACKUP_TOOL);
+    foreach ($arguments as $argument) {
+        $command .= ' ' . escapeshellarg($argument);
+    }
+
+    $output = [];
+    $exitCode = 0;
+    exec($command . ' 2>&1', $output, $exitCode);
+
+    return ['output' => $output, 'exitCode' => $exitCode];
+}
+
+function connectedIosDevices(): array
+{
+    $command = escapeshellcmd(IOS_DEVICE_TOOL) . ' -l';
+    $output = [];
+    $exitCode = 0;
+    exec($command . ' 2>&1', $output, $exitCode);
+    $result = ['output' => $output, 'exitCode' => $exitCode];
+    return $result['exitCode'] === 0 ? array_values(array_filter(array_map('trim', $result['output']))) : [];
 }
 
 function connectedDevices(): array
@@ -167,6 +193,7 @@ function latestBackups(): array
 }
 
 $devices = connectedDevices();
+$iosDevices = connectedIosDevices();
 $message = null;
 $messageType = 'info';
 
@@ -251,6 +278,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'backu
     $devices = connectedDevices();
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ios_backup') {
+    $backupName = requestedBackupName();
+    if ($iosDevices === []) {
+        $message = 'Nenhum iPhone autorizado foi encontrado. Desbloqueie-o e aceite a mensagem Confiar neste computador.';
+        $messageType = 'error';
+    } elseif ($backupName === '') {
+        $message = 'Indique um nome válido para o backup do iPhone.';
+        $messageType = 'error';
+    } else {
+        $destination = BACKUP_ROOT . DIRECTORY_SEPARATOR . $backupName . DIRECTORY_SEPARATOR . 'iPhone';
+        if (is_dir($destination)) {
+            $message = 'Já existe um backup de iPhone com esse nome. Escolha outro nome.';
+            $messageType = 'error';
+        } else {
+            mkdir($destination, 0775, true);
+            $result = runIos(['-u', $iosDevices[0], 'backup', '--full', $destination]);
+            if ($result['exitCode'] === 0) {
+                $message = 'Backup completo do iPhone concluído em ' . $backupName . '.';
+                $messageType = 'success';
+            } else {
+                $message = 'Não foi possível criar o backup do iPhone: ' . implode(' ', array_slice($result['output'], -2));
+                $messageType = 'error';
+            }
+        }
+    }
+    $iosDevices = connectedIosDevices();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'restore') {
     $backupName = basename((string) ($_POST['backup_name'] ?? ''));
     $backupPath = BACKUP_ROOT . DIRECTORY_SEPARATOR . $backupName;
@@ -326,7 +381,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
     $devices = connectedDevices();
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'ios_restore') {
+    $backupName = basename((string) ($_POST['backup_name'] ?? ''));
+    $source = BACKUP_ROOT . DIRECTORY_SEPARATOR . $backupName . DIRECTORY_SEPARATOR . 'iPhone';
+    if ($iosDevices === []) {
+        $message = 'Nenhum iPhone autorizado foi encontrado.';
+        $messageType = 'error';
+    } elseif (!preg_match('/^[\p{L}\p{N}][\p{L}\p{N} _.-]{0,79}$/u', $backupName) || !is_dir($source)) {
+        $message = 'Escolha um backup completo de iPhone válido.';
+        $messageType = 'error';
+    } else {
+        $result = runIos(['-u', $iosDevices[0], 'restore', '--system', '--settings', $source]);
+        if ($result['exitCode'] === 0) {
+            $message = 'Restauro completo do iPhone concluído. O equipamento poderá reiniciar.';
+            $messageType = 'success';
+        } else {
+            $message = 'Não foi possível restaurar o iPhone: ' . implode(' ', array_slice($result['output'], -2));
+            $messageType = 'error';
+        }
+    }
+    $iosDevices = connectedIosDevices();
+}
+
 $hasAdb = runAdb(['version'])['exitCode'] === 0;
+$hasIosTool = runIos(['--help'])['exitCode'] === 0;
 $backups = latestBackups();
 ?>
 <!doctype html>
@@ -367,6 +445,17 @@ $backups = latestBackups();
             </div>
         </section>
 
+        <section class="ios-panel <?= $iosDevices !== [] ? 'ready' : '' ?>">
+            <div class="ios-heading"><div><span class="section-number">iOS</span><h2>Backup de iPhone</h2></div><span class="status-pill <?= $iosDevices !== [] ? 'online' : 'offline' ?>"><i></i><?= $iosDevices !== [] ? 'Ligado' : 'Não detetado' ?></span></div>
+            <p>O iPhone usa o backup oficial local da Apple. Desbloqueie-o e aceite <strong>Confiar neste computador</strong>. O backup é completo e não cria pastas DCIM duplicadas.</p>
+            <?php if ($iosDevices !== []): ?><small class="device-id"> <?= htmlspecialchars($iosDevices[0], ENT_QUOTES, 'UTF-8') ?></small><?php endif; ?>
+            <form method="post" class="ios-actions process-form" data-process="ios-backup">
+                <input type="hidden" name="action" value="ios_backup">
+                <input class="ios-name" type="text" name="backup_name" maxlength="80" placeholder="Nome do backup do iPhone" required>
+                <button class="primary-button" type="submit"><span>Criar backup completo</span><b>→</b></button>
+            </form>
+        </section>
+
         <?php if (!$hasAdb): ?>
             <div class="setup-warning"><strong>ADB não encontrado.</strong> Instale o Android SDK Platform-Tools e adicione a pasta `platform-tools` ao PATH do sistema.</div>
         <?php endif; ?>
@@ -399,6 +488,15 @@ $backups = latestBackups();
                     <div class="section-heading"><div><span class="section-number">03</span><h2>Restaurar para o telemóvel</h2></div></div>
                     <div class="restore-controls"><label>Backup<select name="backup_name" required><?php foreach ($backups as $backup): ?><option value="<?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars($backup['size'], ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?></select></label><label>Pastas e ficheiros a restaurar<select name="restore_items[]" multiple required><?php foreach (BACKUP_FOLDERS as $label => $remote): ?><option value="<?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?><option value="Contactos">Contactos (VCF para Download)</option><option value="Mensagens">SMS (XML para Download)</option></select></label></div>
                     <div class="action-row"><button class="primary-button restore-button" type="submit"><span>Restaurar selecionados</span><b>↗</b></button><span class="action-note">VCF e XML são colocados em<br><strong>Download/</strong></span></div>
+                </form>
+            <?php endif; ?>
+            <?php $iosBackups = array_values(array_filter($backups, static fn (array $backup): bool => is_dir(BACKUP_ROOT . DIRECTORY_SEPARATOR . $backup['name'] . DIRECTORY_SEPARATOR . 'iPhone'))); ?>
+            <?php if ($iosBackups !== []): ?>
+                <form method="post" class="ios-restore-form process-form" data-process="ios-restore">
+                    <input type="hidden" name="action" value="ios_restore">
+                    <div class="section-heading"><div><span class="section-number">iOS</span><h2>Restaurar iPhone</h2></div></div>
+                    <div class="restore-controls"><label>Backup completo<select name="backup_name" required><?php foreach ($iosBackups as $backup): ?><option value="<?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($backup['name'], ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?></select></label></div>
+                    <div class="action-row"><button class="primary-button restore-button" type="submit"><span>Restaurar iPhone</span><b>↗</b></button><span class="action-note">O iPhone pode reiniciar<br><strong>Não desligue o cabo</strong></span></div>
                 </form>
             <?php endif; ?>
         <footer><span>Âncora v1.0</span><span>Ligação direta · Sem cloud</span></footer>

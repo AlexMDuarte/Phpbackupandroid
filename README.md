@@ -1,6 +1,6 @@
 # Âncora
 
-Aplicação PHP local para copiar dados de um telemóvel Android através de ADB. Os ficheiros permanecem no computador e não são enviados para a cloud.
+Aplicação PHP local para criar backups de telemóveis Android e iPhone. Os ficheiros permanecem no computador e não são enviados para a cloud.
 
 ## Requisitos
 
@@ -8,6 +8,7 @@ Aplicação PHP local para copiar dados de um telemóvel Android através de ADB
 - Android SDK Platform-Tools (`adb`)
 - Telemóvel Android com **Opções de programador** e **Depuração USB** ativas
 - Cabo USB de dados
+- Para iPhone: `libimobiledevice` com `idevice_id` e `idevicebackup2`
 
 ## Arranque no Windows
 
@@ -21,6 +22,8 @@ adb devices
 ```
 
 O estado deve aparecer como `device`, não `unauthorized`.
+
+Para iPhone, ligue o cabo USB, desbloqueie o equipamento e aceite **Confiar neste computador**. A aplicação usa `idevicebackup2` para criar um backup local completo.
 
 5. Inicie a aplicação:
 
@@ -53,3 +56,7 @@ Durante o backup e o restauro, a aplicação mostra uma barra de progresso visua
 ## Restauro de SMS
 
 O projeto auxiliar `sms-helper` contém uma APK Android para exportar SMS para `Download\sms-backup.xml` e restaurá-los com as permissões oficiais do Android. A aplicação tem de ser instalada normalmente e definida temporariamente como aplicação SMS predefinida durante o restauro. Consulte `sms-helper\README.md` para compilar no Android Studio. A APK compilada localmente não é incluída no Git por ser um artefacto de build; gere-a com `gradle assembleDebug` antes de usar o restauro automático num clone novo.
+
+## iPhone
+
+Na secção **Backup de iPhone**, escreva um nome e crie um backup completo. O restauro também é completo, porque o iOS não permite à aplicação PHP copiar/restaurar pastas públicas individualmente como o Android. O iPhone pode pedir o código de desbloqueio e reiniciar durante o restauro; não desligue o cabo.
