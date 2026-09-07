@@ -36,6 +36,8 @@ Para restaurar os contactos manualmente, copie `contactos.vcf` para o telemóvel
 
 Na secção **Restaurar para o telemóvel**, escolha um backup e uma ou mais pastas. O restauro envia novamente os ficheiros para as pastas públicas do Android usando `adb push`. Se selecionar **Contactos (VCF para Download)** e **SMS (XML para Download)**, os ficheiros são colocados diretamente em `Download\contactos.vcf` e `Download\sms-backup.xml` para importar/restaurar no telemóvel.
 
+As pastas públicas são copiadas pelo conteúdo da pasta, não pela pasta exterior. Assim, um backup novo mantém `DCIM\ficheiro.jpg` e o restauro mantém `DCIM\ficheiro.jpg`, sem criar `DCIM\DCIM`. Backups antigos com a duplicação também são reconhecidos durante o restauro.
+
 Ao selecionar SMS, a aplicação PHP instala automaticamente `sms-helper\app\build\outputs\apk\debug\app-debug.apk` com `adb install -r`, envia o XML para Download e abre a aplicação Âncora SMS. O Android ainda mostra os pedidos de permissão e de aplicação SMS predefinida, que têm de ser confirmados manualmente.
 
 Durante o backup e o restauro, a aplicação mostra uma barra de progresso visual com as etapas da operação. A percentagem é uma estimativa enquanto o pedido ADB está em execução; o resultado final apresentado pelo servidor é a confirmação efetiva.

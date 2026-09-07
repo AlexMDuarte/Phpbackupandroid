@@ -143,6 +143,11 @@ function messagesToXml(array $lines): string
     return sprintf("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>\r\n<smses count=\"%d\">\r\n%s\r\n</smses>\r\n", count($messages), implode("\r\n", $messages));
 }
 
+function remoteContentsPath(string $path): string
+{
+    return rtrim($path, '/') . '/.';
+}
+
 function latestBackups(): array
 {
     if (!is_dir(BACKUP_ROOT)) {
@@ -210,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'backu
 
             $localTarget = $destination . DIRECTORY_SEPARATOR . $label;
             mkdir($localTarget, 0775, true);
-            $result = runAdb(['-s', $devices[0], 'pull', BACKUP_FOLDERS[$label], $localTarget]);
+            $result = runAdb(['-s', $devices[0], 'pull', remoteContentsPath(BACKUP_FOLDERS[$label]), $localTarget]);
             if ($result['exitCode'] === 0) {
                 $copied[] = $label;
             } else {
@@ -304,7 +309,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resto
                 $failed[] = $label;
                 continue;
             }
-            $result = runAdb(['-s', $devices[0], 'push', $source, BACKUP_FOLDERS[$label]]);
+            $legacyNestedSource = $source . DIRECTORY_SEPARATOR . $label;
+            if (is_dir($legacyNestedSource)) {
+                $source = $legacyNestedSource;
+            }
+            $result = runAdb(['-s', $devices[0], 'push', remoteContentsPath($source), remoteContentsPath(BACKUP_FOLDERS[$label])]);
             if ($result['exitCode'] === 0) {
                 $restored[] = $label;
             } else {
